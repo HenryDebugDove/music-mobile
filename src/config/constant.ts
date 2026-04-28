@@ -76,6 +76,7 @@ export const storageDataPrefix = {
   remoteLyricTip: '@remote_lyric_tip',
 
   dislikeList: '@dislike_list',
+  dailyRecommendDate: '@daily_recommend_date',
 
   userApi: '@user_api__',
 } as const

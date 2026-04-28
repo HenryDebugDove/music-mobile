@@ -3,8 +3,36 @@ import { log, setUserApiList, setUserApiStatus } from '@/core/userApi'
 import settingState from '@/store/setting/state'
 import BackgroundTimer from 'react-native-background-timer'
 import { fetchData } from './request'
-import { getUserApiList } from '@/utils/data'
+import { addUserApi, getUserApiList } from '@/utils/data'
 import { confirmDialog, openUrl, tipDialog } from '@/utils/tools'
+import { httpFetch } from '@/utils/request'
+
+const DEFAULT_USER_API_SOURCES = [
+  { name: 'SixYin', url: 'https://ghproxy.net/raw.githubusercontent.com/pdone/lx-music-source/main/sixyin/latest.js' },
+  { name: 'Huibq', url: 'https://ghproxy.net/raw.githubusercontent.com/pdone/lx-music-source/main/huibq/latest.js' },
+  { name: 'Flower', url: 'https://ghproxy.net/raw.githubusercontent.com/pdone/lx-music-source/main/flower/latest.js' },
+  { name: 'LX', url: 'https://ghproxy.net/raw.githubusercontent.com/pdone/lx-music-source/main/lx/latest.js' },
+  { name: 'ikun', url: 'https://ghproxy.net/raw.githubusercontent.com/pdone/lx-music-source/main/ikun/latest.js' },
+  { name: 'Grass', url: 'https://ghproxy.net/raw.githubusercontent.com/pdone/lx-music-source/main/grass/latest.js' },
+  { name: 'JuheApi', url: 'https://ghproxy.net/raw.githubusercontent.com/pdone/lx-music-source/main/juhe/latest.js' },
+] as const
+
+const initDefaultUserApiSources = async() => {
+  const currentList = await getUserApiList()
+  const importedNames = new Set(currentList.map(item => item.name.toLowerCase()))
+  for (const { name, url } of DEFAULT_USER_API_SOURCES) {
+    if (importedNames.has(name.toLowerCase())) continue
+    try {
+      const script = await httpFetch(url).promise.then(resp => resp.body as string)
+      if (!script || typeof script != 'string') continue
+      await addUserApi(script)
+      importedNames.add(name.toLowerCase())
+    } catch (err: any) {
+      log.warn(`init default user api source failed: ${name}`, err?.message ?? err)
+    }
+  }
+  return getUserApiList()
+}
 
 
 export default async(setting: LX.AppSetting) => {
@@ -252,5 +280,5 @@ export default async(setting: LX.AppSetting) => {
     }
   })
 
-  setUserApiList(await getUserApiList())
+  setUserApiList(await initDefaultUserApiSources())
 }

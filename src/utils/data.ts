@@ -26,6 +26,7 @@ const syncHostPrefix = storageDataPrefix.syncHost
 const syncHostHistoryPrefix = storageDataPrefix.syncHostHistory
 const listPrefix = storageDataPrefix.list
 const dislikeListPrefix = storageDataPrefix.dislikeList
+const dailyRecommendDatePrefix = storageDataPrefix.dailyRecommendDate
 const userApiPrefix = storageDataPrefix.userApi
 const openStoragePathPrefix = storageDataPrefix.openStoragePath
 const selectedManagedFolderPrefix = storageDataPrefix.selectedManagedFolder
@@ -399,6 +400,13 @@ export const getDislikeListRules = async() => {
  */
 export const saveDislikeListRules = async(rules: string) => {
   await saveData(dislikeListPrefix, rules)
+}
+
+export const getDailyRecommendDate = async() => {
+  return await getData<string>(dailyRecommendDatePrefix) ?? ''
+}
+export const setDailyRecommendDate = async(date: string) => {
+  await saveData(dailyRecommendDatePrefix, date)
 }
 
 // export const clearMusicUrlAndLyric = async() => {
