@@ -1,0 +1,72 @@
+---
+description: 如何在本仓库打出可离线安装的 Android 正式包（release APK），以及 adb 一键安装
+globs: android/**/*
+alwaysApply: false
+---
+
+# Android 正式包（release APK）
+
+本仓库为 React Native；**debug 包依赖 Metro**，安装后需 `npm run start`。独立分发请打 **release**。
+
+## 前置条件
+
+- `android/local.properties` 已配置 `sdk.dir`（指向本机 Android SDK）。
+- `android/keystore.properties` 存在且 `storeFile` 相对 `android/app/`：一般为 `debug.keystore`（仓库自带），勿写成 `app/debug.keystore`。
+- Windows 若 Gradle 在项目目录 `android/.gradle` 下偶发路径过长或锁文件错误，可使用 `--project-cache-dir` 把工程缓存放到短路径。
+
+## 构建命令（在项目根目录）
+
+进入 `android` 目录后执行：
+
+```bash
+cd android
+.\gradlew.bat --project-cache-dir "C:/Users/zhangh/.gradle-project-cache/lxmusic-mobile" assembleRelease -PreactNativeArchitectures=arm64-v8a
+```
+
+说明：
+
+- `-PreactNativeArchitectures=arm64-v8a`：仅编 arm64，构建更快；产物仍含 **universal**（若 `build.gradle` 里 `universalApk true`）。
+- 不调 Metro；RN Gradle 插件会在 release 时打包 JS bundle。
+
+## 产物路径
+
+构建成功后 APK 位于（文件名中的版本号与根目录 `package.json` 的 `version` 一致）：
+
+- `android/app/build/outputs/apk/release/lx-music-mobile-v<version>-universal.apk`
+- `android/app/build/outputs/apk/release/lx-music-mobile-v<version>-arm64-v8a.apk`
+
+## 用 ADB 安装（Agent / 本机操作约定）
+
+1. **先确认已连接真机**（USB 调试已开）：
+
+```bash
+adb devices
+```
+
+2. **若输出中存在状态为 `device` 的设备**（非空、非 `unauthorized`），则直接安装 **release universal** 包（覆盖安装）：
+
+```bash
+adb install -r "android/app/build/outputs/apk/release/lx-music-mobile-v1.8.2-universal.apk"
+```
+
+在仓库根目录执行时，也可用绝对路径，避免 cwd 不对：
+
+```bash
+adb install -r "<仓库根目录>/android/app/build/outputs/apk/release/lx-music-mobile-v1.8.2-universal.apk"
+```
+
+3. **仅一台设备时**可省略 `-s`；多设备时用 `adb -s <序列号> install -r ...`。
+
+4. **安装失败常见原因**：
+
+- 手机弹出安装确认未点允许 → 会出现 `INSTALL_FAILED_ABORTED: User rejected permissions`，需在设备上同意安装/权限后再执行一次 `adb install -r`。
+- **`INSTALL_FAILED_VERSION_DOWNGRADE`**：手机上已装版本的 `versionCode` 高于当前 APK（例如本仓库默认曾为 74，而商店/魔改版为 74003）。处理方式二选一：
+  - **卸载后重装**（会清空应用数据）：`adb uninstall cn.toside.music.mobile`，再 `adb install ...`。
+  - **提高本包 `versionCode`**：在根目录 `package.json` 把 `versionCode` 改为大于已安装版本（如 `75001`），重新 `assembleRelease` 后再 `adb install -r`。
+- 签名冲突可先卸载：`adb uninstall cn.toside.music.mobile`（会清应用数据），再 `adb install`。
+
+5. **Agent 行为约定**：执行 `adb devices` 后，若存在至少一行 `xxx\tdevice`，则无需再问用户是否已连接，**直接执行** `adb install -r` 指向上述 universal APK（版本号以当前 `package.json` 的 `version` 为准拼文件名）。
+
+## 与 npm 脚本的关系
+
+根目录 `package.json` 中 `pack:android` 使用 `gradlew.bat assembleRelease`，可在配置好环境后同样用于打正式包。
